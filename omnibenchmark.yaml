@@ -1,0 +1,2 @@
+entrypoints:
+  default: auc_compute.py

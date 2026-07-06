@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 import pathlib
+import json
 
 
 #Parse arguments from terminal
@@ -27,7 +28,7 @@ output_dir = getattr(args, 'output_dir')
 metadata = getattr(args, "preprocessing.meta")
 
 #Create output directory
-os.makedirs(f"./{output_dir}", exist_ok=True)
+os.makedirs(f"{output_dir}", exist_ok=True)
 
 #Load and preprocess metadata
 metadata_df = pd.read_csv(metadata, sep='\t')
@@ -37,33 +38,27 @@ metadata_df["true_label"] = metadata_df["true_label"].str.upper()
 label_types_samples = list(set(metadata_df["true_label"]))
 label_types_samples = [label_class.upper() for label_class in label_types_samples if isinstance(label_class, str)]
 
-#Load in parameters dict #Luca same as just above
-parameters_df = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(input_filepath)), "parameters_dict.tsv"), delimiter="\t")
-parameters_connect_dict = dict()
-methods_connect_dict = dict()
-
-for i, row in parameters_df.iterrows():
-    hash_value = row["base_path"].split("/")[-1]
-    human_value = row["alias_path"].split("-")[-1]
-    parameters_connect_dict[hash_value] = human_value
-    human_value = row["alias_path"].split("-")[1].split("_")[0]
-    methods_connect_dict[hash_value] = human_value
-
-#Extract specific tool information
+#read data from tool
 filepath_split = input_filepath.split("/")
-
 module = filepath_split[-3]
-parameter = filepath_split[-2]
+parameters = filepath_split[-2]
 
-if module == 'gsva':
-    module = methods_connect_dict[parameter]
+parameters_json_path = os.path.join(
+    os.path.dirname(input_filepath),
+    "parameters.json"
+)
 
-if parameter != "default":
-    parameter = parameters_connect_dict[parameter]
+with open(parameters_json_path, "r") as f:
+    module_params = json.load(f)
 
-#Store tool name in two different versions for later use
-tool = module + "/" + parameter
-tool_ = module + "_" + parameter
+if module == 'GSVA':
+    module = module_params['algorithm'].upper()
+
+if parameters != ".default":
+    input_type = module_params['input_type']
+
+tool = module + "/" + input_type
+tool_ = module + "_" + input_type
 
 print(tool)
 
@@ -316,7 +311,7 @@ def plot_roc_curves(fpr, tpr, roc_auc, classes, tool_, tool, dataset_name):
     plt.tight_layout()
     
     #Save plot
-    plt.savefig(f"./{output_dir}/{dataset_name}-ROC_{tool_}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{output_dir}/{dataset_name}-ROC_{tool_}.png", dpi=300, bbox_inches='tight')
     plt.close()
     
 
